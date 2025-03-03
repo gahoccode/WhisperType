@@ -4,6 +4,7 @@ Handles communication with the OpenAI API for audio transcription.
 """
 import os
 import requests
+import httpx
 from openai import OpenAI
 from dotenv import load_dotenv
 
@@ -19,8 +20,12 @@ class TranscriptionService:
         if not self.api_key:
             raise ValueError("OpenAI API key not found. Please set the OPENAI_API_KEY environment variable.")
             
-        # Initialize OpenAI client
-        self.client = OpenAI(api_key=self.api_key)
+        # Initialize OpenAI client with custom HTTP client
+        http_client = httpx.Client()
+        self.client = OpenAI(
+            api_key=self.api_key,
+            http_client=http_client
+        )
         
     def transcribe_audio_file(self, file_path, language=None):
         """
