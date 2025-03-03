@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speech to Text</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Speech to Text Transcription</h1>
+            <p>Convert your audio files to text using OpenAI's Whisper model</p>
+        </header>
+        
+        <main>
+            <div class="upload-container">
+                <div id="drop-area">
+                    <form id="upload-form" enctype="multipart/form-data">
+                        <input type="file" id="fileElem" accept=".mp3,.wav,.mp4,.m4a,.webm" class="visually-hidden">
+                        <label for="fileElem" class="upload-label">
+                            <div class="upload-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
+                                    <path d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z" fill="currentColor"/>
+                                </svg>
+                            </div>
+                            <span>Drag audio file here or click to upload</span>
+                        </label>
+                    </form>
+                    <div id="file-info" class="hidden">
+                        <div id="file-name"></div>
+                        <button id="remove-file">Remove</button>
+                    </div>
+                </div>
+                <button id="transcribe-btn" class="disabled">Transcribe</button>
+            </div>
+            
+            <div id="result-container" class="hidden">
+                <h2>Transcription</h2>
+                <div id="loader" class="hidden"></div>
+                <div id="transcription-result"></div>
+                <div class="action-buttons">
+                    <button id="copy-btn">Copy to Clipboard</button>
+                    <button id="download-btn">Download as Text</button>
+                </div>
+            </div>
+        </main>
+        
+        <footer>
+            <p>Powered by OpenAI's Whisper model</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
