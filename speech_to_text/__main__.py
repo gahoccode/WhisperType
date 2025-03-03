@@ -7,6 +7,7 @@ import threading
 import os
 from PIL import Image, ImageDraw
 import pyperclip
+import keyboard
 
 from speech_to_text.tray_icon import SystemTrayIcon
 from speech_to_text.settings_manager import SettingsManager
@@ -35,24 +36,25 @@ class SpeechToTextTrayApp:
         self.is_recording = False
         self.settings_window = None
         
-        # Register the global hotkey
+        # Register the global hotkey with press and release callbacks
         activate_hotkey = self.settings_manager.get_setting('hotkeys', 'activate')
-        self.hotkey_manager.register_hotkey('activate', activate_hotkey, self.toggle_recording)
+        self.hotkey_manager.register_hotkey(
+            'activate',
+            activate_hotkey,
+            self.start_recording,
+            self.stop_and_paste
+        )
         
     def run(self):
         """Run the application."""
         # Start the system tray icon
         self.tray_icon.run()
         
-    def toggle_recording(self):
-        """Toggle recording state when hotkey is pressed."""
-        if self.is_recording:
-            self.stop_recording()
-        else:
-            self.start_recording()
-            
     def start_recording(self):
-        """Start recording audio."""
+        """Start recording when hotkey is pressed."""
+        if self.is_recording:
+            return
+            
         try:
             # Get the microphone device from settings
             device_id = self.settings_manager.get_setting('microphone', 'device_id')
@@ -60,22 +62,18 @@ class SpeechToTextTrayApp:
             # Update UI to show recording state
             self.is_recording = True
             self.tray_icon.update_icon(recording=True)
-            self.tray_icon.notify("Recording Started", "Speak now...")
+            self.tray_icon.notify("Recording", "Speaking... Release hotkey to stop")
             
             # Start recording
             self.voice_recorder.start_recording(device_id=device_id)
-            
-            # Set up a timer to automatically stop recording after max_duration
-            max_duration = self.settings_manager.get_setting('recording', 'max_duration')
-            threading.Timer(max_duration, self.stop_recording).start()
             
         except Exception as e:
             self.tray_icon.notify("Error", f"Failed to start recording: {str(e)}")
             self.is_recording = False
             self.tray_icon.update_icon(recording=False)
             
-    def stop_recording(self):
-        """Stop recording and transcribe the audio."""
+    def stop_and_paste(self):
+        """Stop recording, transcribe, and paste when hotkey is released."""
         if not self.is_recording:
             return
             
@@ -94,20 +92,10 @@ class SpeechToTextTrayApp:
                 text = self.transcription_service.transcribe_audio_file(audio_file, language=language)
                 
                 if text:
-                    # Copy to clipboard or paste directly based on settings
-                    if self.settings_manager.get_setting('output', 'paste_directly'):
-                        # Paste the text (using pyperclip and simulating keyboard events)
-                        pyperclip.copy(text)
-                        
-                        # Simulate Ctrl+V to paste
-                        import keyboard
-                        keyboard.press_and_release('ctrl+v')
-                    elif self.settings_manager.get_setting('output', 'copy_to_clipboard'):
-                        # Just copy to clipboard
-                        pyperclip.copy(text)
-                        
-                    # Notify the user
-                    self.tray_icon.notify("Success", "Text has been transcribed")
+                    # Copy to clipboard and paste
+                    pyperclip.copy(text)
+                    keyboard.press_and_release('ctrl+v')
+                    self.tray_icon.notify("Success", "Text has been pasted")
                 else:
                     self.tray_icon.notify("Warning", "No speech detected")
                     
@@ -123,7 +111,7 @@ class SpeechToTextTrayApp:
             self.tray_icon.notify("Error", f"Transcription failed: {str(e)}")
             
         finally:
-            # Reset state
+            # Reset recording state
             self.is_recording = False
             self.tray_icon.update_icon(recording=False)
             
@@ -375,7 +363,12 @@ class SpeechToTextTrayApp:
             if hotkey != current_hotkey:
                 # Unregister old hotkey and register new one
                 self.hotkey_manager.unregister_hotkey('activate')
-                self.hotkey_manager.register_hotkey('activate', hotkey, self.toggle_recording)
+                self.hotkey_manager.register_hotkey(
+                    'activate',
+                    hotkey,
+                    self.start_recording,
+                    self.stop_and_paste
+                )
                 self.hotkey_manager.update_hotkey('activate', hotkey)
             
             # Save output settings
